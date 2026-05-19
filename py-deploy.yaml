@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: py-deploy-17
+  namespace: ns17
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: python-app-17
+  template:
+    metadata:
+      labels:
+        app: python-app-17
+    spec:
+      containers:
+        - name: python-container
+          image: vishwacloudlab/pythonapp:v4-var
+          ports:
+            - containerPort: 8000
+          env:
+            - name: REDIS_HOST
+              value: "redis-service-17"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          volumeMounts:
+          - mountPath: "/code"
+            name: my-storage-17
+      volumes:
+      - name: my-storage-17
+        persistentVolumeClaim:
+          claimName: pramod-pvc17              
