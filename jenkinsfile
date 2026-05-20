@@ -2,11 +2,18 @@ pipeline {
   agent {label 'ns17-kube'}
  
   stages {
- 
+    
+    stage('Checkout') {
+      steps {
+        git branch: 'main',
+                    credentialsId: 'ns17-github-cred',
+                    url: 'git@github.com:pgaws/k8slab.git'                    
+      }
+    }
     stage('Check on Kubernetes') {
       steps {
         sh '''
- 
+          export KUBECONFIG=$HOME/k8s-3-node.conf
           kubectl get pods
           kubectl get svc
           kubectl get deployments
@@ -16,6 +23,7 @@ pipeline {
     stage('Deployment on Kubernetes') {
       steps {
         sh '''
+          export KUBECONFIG=$HOME/k8s-3-node.conf
           kubectl apply -f .
         '''
       }
