@@ -10,6 +10,19 @@ pipeline {
                     url: 'git@github.com:pgaws/k8slab.git'                    
       }
     }
+      stage('Check the docker cli') {
+      steps {
+        sh "docker --version"
+        sh "docker ps -a"
+      }
+    }
+    stage('Build Docker Image') {
+      steps {
+        sh '''
+          docker build -t gonurup/py-may26:$BUILD_NUMBER app
+        '''
+      }
+    }
     stage('Check on Kubernetes') {
       steps {
         sh '''
