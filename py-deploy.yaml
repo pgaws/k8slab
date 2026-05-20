@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: python-container
-          image: vishwacloudlab/pythonapp:v4-var
+          image: gonurup/py-may26:${IMAGE_TAG}
           ports:
             - containerPort: 8000
           env:
