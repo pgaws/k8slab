@@ -33,9 +33,9 @@ spec:
             limits:
               cpu: "500m"
               memory: "256Mi"
-          #volumeMounts:
-          #- mountPath: "/code"
-          #  name: my-storage-17
+          volumeMounts:
+          - mountPath: "/code"
+            name: my-storage-17
       volumes:
       - name: my-storage-17
         persistentVolumeClaim:
