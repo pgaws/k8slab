@@ -23,6 +23,23 @@ pipeline {
         '''
       }
     }
+        stage('Push Docker Image') {
+        steps {
+            withCredentials([
+            usernamePassword(
+                credentialsId: 'ns17-docker-creds',
+                usernameVariable: 'DOCKERHUB_USER',
+                passwordVariable: 'DOCKERHUB_PASS'
+            )
+            ]) {
+            sh '''
+                echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
+                docker push gonurup/py-may26:$BUILD_NUMBER
+                docker logout
+            '''
+            }
+        }
+    }
     stage('Check on Kubernetes') {
       steps {
         sh '''
