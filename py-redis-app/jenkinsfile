@@ -3,8 +3,8 @@ pipeline {
  
   environment {
     REGISTRY_IMAGE = 'gonurup/py-may26'
-    CHART_DIR = 'name: py-redis-app'
-    RELEASE_NAME = 'py-redis'
+    CHART_DIR = 'py-redis-app'
+    RELEASE_NAME = 'py-redis-app'
     NAMESPACE = 'ns17'
     KUBECONFIG = "${HOME}/k8s-3-node.conf"
   }

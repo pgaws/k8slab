@@ -63,7 +63,7 @@ strategy:
 
 persistence:
   pv:
-    name: pramod-pv17
+    name: pramod-pv17a
     label: fast-23
     storage: 5Gi
     reclaimPolicy: Retain
@@ -72,7 +72,7 @@ persistence:
       path: /srv/nfs/kubedata/pyapp
       server: 172.31.11.26
   pvc:
-    name: pramod-pvc17
+    name: pramod-pvc17a
     storage: 1Gi
     accessMode: ReadWriteOnce
     storageClassName: manual
