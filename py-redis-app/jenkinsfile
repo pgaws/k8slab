@@ -1,0 +1,166 @@
+    stage('Deploy - Template and Apply') {
+        steps {
+            sh '''
+            export KUBECONFIG=$HOME/k8s-3-node.conf
+            kubectl apply -f pv.yaml -f pvc.yaml -f py-service.yaml -f redis-service.yaml -f redis-deploy.yaml
+            export IMAGE_TAG=$BUILD_NUMBER
+            envsubst < py-deploy.yaml | kubectl apply -f -
+            kubectl rollout status deployment/py-deploy
+            '''
+        }
+    }
+	
+==================
+
+pipeline {
+  agent { label 'ns17-kube' }
+ 
+  environment {
+    REGISTRY_IMAGE = 'gonurup/py-may26'
+    CHART_DIR = 'name: py-redis-app'
+    RELEASE_NAME = 'py-redis'
+    NAMESPACE = 'ns17'
+    KUBECONFIG = "${HOME}/k8s-3-node.conf"
+  }
+ 
+  stages {
+ 
+    stage('Checkout') {
+      steps {
+        git branch: 'main',
+            credentialsId: 'ns17-github-cred',
+            url: 'git@github.com:pgaws/k8slab.git'
+      }
+    }
+ 
+    stage('Check Tools') {
+      steps {
+        sh '''
+          docker --version
+          kubectl version --client
+          helm version
+        '''
+      }
+    }
+ 
+    stage('Build Docker Image') {
+      steps {
+        sh '''
+          docker build -t ${REGISTRY_IMAGE}:$BUILD_NUMBER app
+        '''
+      }
+    }
+ 
+    stage('Push Docker Image') {
+      steps {
+        withCredentials([
+          usernamePassword(
+            credentialsId: 'ns17-docker-cred',
+            usernameVariable: 'DOCKERHUB_USER',
+            passwordVariable: 'DOCKERHUB_PASS'
+          )
+        ]) {
+          sh '''
+            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
+            docker push ${REGISTRY_IMAGE}:$BUILD_NUMBER
+            docker logout
+          '''
+        }
+      }
+    }
+ 
+    stage('Helm Lint') {
+      steps {
+        sh '''
+          export KUBECONFIG=$KUBECONFIG
+          helm lint ${CHART_DIR}
+        '''
+      }
+    }
+ 
+    stage('Helm Template Validate') {
+      steps {
+        sh '''
+          export KUBECONFIG=$KUBECONFIG
+          helm template ${RELEASE_NAME} ${CHART_DIR} \
+            --namespace ${NAMESPACE} \
+            --set pythonApp.image.repository=${REGISTRY_IMAGE} \
+            --set pythonApp.image.tag=$BUILD_NUMBER
+        '''
+      }
+    }
+ 
+    stage('Kubernetes Precheck') {
+      steps {
+        sh '''
+          export KUBECONFIG=$KUBECONFIG
+          kubectl get nodes
+          kubectl get ns
+          kubectl get pv || true
+          kubectl get all -n ${NAMESPACE} || true
+          kubectl get pvc -n ${NAMESPACE} || true
+        '''
+      }
+    }
+ 
+    stage('Helm Deploy') {
+      steps {
+        sh '''
+          export KUBECONFIG=$KUBECONFIG
+ 
+          kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+ 
+          helm upgrade --install ${RELEASE_NAME} ${CHART_DIR} \
+            --namespace ${NAMESPACE} \
+            --set pythonApp.image.repository=${REGISTRY_IMAGE} \
+            --set pythonApp.image.tag=$BUILD_NUMBER
+ 
+          kubectl rollout status deployment/py-deploy-17 -n ${NAMESPACE} --timeout=180s
+          kubectl rollout status deployment/redis-deploy-17 -n ${NAMESPACE} --timeout=180s
+        '''
+      }
+    }
+ 
+    stage('Verify Deployment') {
+      steps {
+        sh '''
+          export KUBECONFIG=$KUBECONFIG
+          helm list -n ${NAMESPACE}
+          kubectl get all -n ${NAMESPACE}
+          kubectl get pvc -n ${NAMESPACE}
+          kubectl get pv
+        '''
+      }
+    }
+ 
+    stage('Application Health Check') {
+      steps {
+        sh '''
+          sleep 15
+          curl -f http://172.31.6.85:30117
+        '''
+      }
+    }
+  }
+ 
+  post {
+    always {
+      sh '''
+        docker image ls | head
+      '''
+    }
+    failure {
+      sh '''
+        export KUBECONFIG=$KUBECONFIG
+        helm list -n ${NAMESPACE} || true
+        kubectl get all -n ${NAMESPACE} || true
+        kubectl get pvc -n ${NAMESPACE} || true
+        kubectl describe pods -n ${NAMESPACE} || true
+      '''
+      echo 'Pipeline failed. Check logs.'
+    }
+    success {
+      echo 'Build and Helm deployment completed successfully.'
+    }
+  }
+}

@@ -1,0 +1,78 @@
+# Default values for py-redis-app
+replicaCount: 3
+
+pythonApp:
+  name: py-deploy-17
+  namespace: ns17
+  labels:
+    label1: python-app-17
+  image:
+    repository: gonurup/py-may26
+    tag: "20"
+    pullPolicy: IfNotPresent
+  port: 8000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  service:
+    type: NodePort
+    port: 8000
+    targetPort: 8000
+    nodePort: 30199
+
+redis:
+  name: redis-deploy-17
+  image:
+    repository: redis
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  port: 6379
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  service:
+    type: ClusterIP
+    port: 6379
+    targetPort: 6379
+
+configMap:
+  name: py-config
+  data:
+    REDIS_HOST: "redis-service"
+    APP_PORT: "8000"
+    DB_HOST: "db-service"
+    DB_PORT: "5432"
+    DB_USER: "user"
+    DB_PASSWORD: "password"
+    
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 1
+
+
+persistence:
+  pv:
+    name: pramod-pv17
+    label: fast-23
+    storage: 5Gi
+    reclaimPolicy: Retain
+    storageClassName: manual
+    nfs:
+      path: /srv/nfs/kubedata/pyapp
+      server: 172.31.11.26
+  pvc:
+    name: pramod-pvc17
+    storage: 1Gi
+    accessMode: ReadWriteOnce
+    storageClassName: manual

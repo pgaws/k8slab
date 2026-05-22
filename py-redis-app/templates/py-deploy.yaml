@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.pythonApp.name }}
+  namespace: {{ .Values.pythonApp.namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+
+  strategy:
+    type: {{ .Values.strategy.type }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.strategy.rollingUpdate.maxUnavailable }}
+      maxSurge: {{ .Values.strategy.rollingUpdate.maxSurge }}
+
+  selector:
+    matchLabels:
+      app: {{ .Values.pythonApp.labels.label1 }}
+
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.pythonApp.labels.label1 }}
+
+    spec:
+      containers:
+        - name: python-container
+
+          image: "{{ .Values.pythonApp.image.repository }}:{{ .Values.pythonApp.image.tag }}"
+          imagePullPolicy: {{ .Values.pythonApp.image.pullPolicy }}
+
+          ports:
+            - containerPort: {{ .Values.pythonApp.port }}
+
+          env:
+            - name: REDIS_HOST
+              value: "{{ .Values.configMap.data.REDIS_HOST }}"
+
+          resources:
+            requests:
+              cpu: "{{ .Values.pythonApp.resources.requests.cpu }}"
+              memory: "{{ .Values.pythonApp.resources.requests.memory }}"
+
+            limits:
+              cpu: "{{ .Values.pythonApp.resources.limits.cpu }}"
+              memory: "{{ .Values.pythonApp.resources.limits.memory }}"
+
+          volumeMounts:
+            - mountPath: "/code"
+              name: my-storage-17
+
+      volumes:
+        - name: my-storage-17
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.pvc.name }}
